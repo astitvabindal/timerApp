@@ -1,9 +1,23 @@
 // React Native Timer App with Full Feature Set
 // Updated to match all requirements
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, SectionList, Alert, StyleSheet, Modal } from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  SectionList,
+  Alert,
+  StyleSheet,
+  Modal,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LinearGradient from 'react-native-linear-gradient';
+import FastImage from 'react-native-fast-image';
 
 const TimerApp = () => {
   const [timers, setTimers] = useState([]);
@@ -21,25 +35,25 @@ const TimerApp = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimers((prevTimers) =>
-        prevTimers.map((timer) => {
+      setTimers(prevTimers =>
+        prevTimers.map(timer => {
           if (timer.status === 'Running' && timer.remaining > 0) {
             const updatedRemaining = timer.remaining - 1;
             if (updatedRemaining === 0) {
               completeTimer(timer.id, timer.name);
-              return { ...timer, remaining: 0, status: 'Completed' };
+              return {...timer, remaining: 0, status: 'Completed'};
             }
-            return { ...timer, remaining: updatedRemaining };
+            return {...timer, remaining: updatedRemaining};
           }
           return timer;
-        })
+        }),
       );
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
-  const saveTimers = async (timers) => {
+  const saveTimers = async timers => {
     await AsyncStorage.setItem('timers', JSON.stringify(timers));
   };
 
@@ -48,7 +62,7 @@ const TimerApp = () => {
     if (storedTimers) setTimers(JSON.parse(storedTimers));
   };
 
-  const saveHistory = async (history) => {
+  const saveHistory = async history => {
     await AsyncStorage.setItem('history', JSON.stringify(history));
   };
 
@@ -78,86 +92,243 @@ const TimerApp = () => {
     setNewTimerCategory('');
   };
 
-  const startTimer = (id) => {
-    setTimers((prevTimers) =>
-      prevTimers.map((timer) =>
+  const startTimer = id => {
+    setTimers(prevTimers =>
+      prevTimers.map(timer =>
         timer.id === id && timer.remaining > 0
-          ? { ...timer, status: 'Running' }
-          : timer
-      )
+          ? {...timer, status: 'Running'}
+          : timer,
+      ),
     );
   };
 
-  const pauseTimer = (id) => {
-    setTimers((prevTimers) =>
-      prevTimers.map((timer) =>
-        timer.id === id ? { ...timer, status: 'Paused' } : timer
-      )
+  const pauseTimer = id => {
+    setTimers(prevTimers =>
+      prevTimers.map(timer =>
+        timer.id === id ? {...timer, status: 'Paused'} : timer,
+      ),
     );
   };
 
-  const resetTimer = (id) => {
-    setTimers((prevTimers) =>
-      prevTimers.map((timer) =>
-        timer.id === id ? { ...timer, remaining: timer.duration, status: 'Paused' } : timer
-      )
+  const resetTimer = id => {
+    setTimers(prevTimers =>
+      prevTimers.map(timer =>
+        timer.id === id
+          ? {...timer, remaining: timer.duration, status: 'Paused'}
+          : timer,
+      ),
     );
   };
 
-  const completeTimer = (id, name) => {
+  const completeTimer = async (id, name) => {
     setCompletedTimer(name);
     setShowModal(true);
-    const newHistoryItem = { name, time: new Date().toLocaleString() };
-    const updatedHistory = [...history, newHistoryItem];
+
+    const newHistoryItem = {name, time: new Date().toLocaleString()};
+
+    // Load existing history from AsyncStorage
+    const storedHistory = await AsyncStorage.getItem('history');
+    const historyArray = storedHistory ? JSON.parse(storedHistory) : [];
+
+    // Append the new item
+    const updatedHistory = [...historyArray, newHistoryItem];
+
+    // Save the updated history
+    await AsyncStorage.setItem('history', JSON.stringify(updatedHistory));
+
+    // Update local state
     setHistory(updatedHistory);
-    saveHistory(updatedHistory);
+
+    // Remove the completed timer from the active list
+    setTimers(prevTimers => prevTimers.filter(timer => timer.id !== id));
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Timer App</Text>
-      <TextInput placeholder="Timer Name" value={newTimerName} onChangeText={setNewTimerName} style={styles.input} />
-      <TextInput placeholder="Duration (s)" keyboardType="numeric" value={newTimerDuration} onChangeText={setNewTimerDuration} style={styles.input} />
-      <TextInput placeholder="Category" value={newTimerCategory} onChangeText={setNewTimerCategory} style={styles.input} />
-      <Button title="Add Timer" onPress={addTimer} />
-      <SectionList
-        sections={Object.values(
-          timers.reduce((acc, timer) => {
-            if (!acc[timer.category]) acc[timer.category] = { title: timer.category, data: [] };
-            acc[timer.category].data.push(timer);
-            return acc;
-          }, {})
-        )}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.timerItem}>
-            <Text>{item.name} - {item.remaining}s [{item.status}]</Text>
-            <Button title="Start" onPress={() => startTimer(item.id)} />
-            <Button title="Pause" onPress={() => pauseTimer(item.id)} />
-            <Button title="Reset" onPress={() => resetTimer(item.id)} />
+    // <View style={[styles.container, darkMode ? styles.darkContainer : styles.lightContainer]}>
+    <View style={[styles.container]}>
+      <ScrollView>
+        <Text style={styles.header}>Timer App</Text>
+        {/* <Switch value={darkMode} onValueChange={setDarkMode} /> */}
+        <TextInput
+          placeholder="Timer Name"
+          value={newTimerName}
+          onChangeText={setNewTimerName}
+          style={styles.input}
+        />
+        <TextInput
+          placeholder="Duration (s)"
+          keyboardType="numeric"
+          value={newTimerDuration}
+          onChangeText={setNewTimerDuration}
+          style={styles.input}
+        />
+        <TextInput
+          placeholder="Category"
+          value={newTimerCategory}
+          onChangeText={setNewTimerCategory}
+          style={styles.input}
+        />
+        <TouchableOpacity style={styles.AddTimer} onPress={addTimer}>
+          <LinearGradient
+            colors={['#1E3C72', '#2A5298', '#1A3C74']}
+            style={styles.linearGradient1}>
+            <Text style={{...styles.buttonText1, color: '#FFFFFF'}}>
+              Add Timer
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        <SectionList
+          sections={Object.values(
+            timers.reduce((acc, timer) => {
+              if (!acc[timer.category])
+                acc[timer.category] = {title: timer.category, data: []};
+              acc[timer.category].data.push(timer);
+              return acc;
+            }, {}),
+          )}
+          keyExtractor={item => item.id}
+          renderItem={({item}) => (
+            <View style={styles.timerItem}>
+              <Text style={{fontSize: 19}}>
+                <Text style={{fontWeight: 'bold'}}> Name:-</Text>
+                {item.name}({item.status})
+              </Text>
+              <Text
+                style={{
+                  borderWidth: 0.5,
+                  borderRadius: 50,
+                  width: 100,
+                  height: 100,
+                  textAlign: 'center',
+                  fontSize: 16,
+                  marginTop: 5,
+                  marginBottom: 5,
+                  alignContent: 'center',
+                  margin: 'auto',
+                  lineHeight: 100,
+                }}>
+                {' '}
+                {item.remaining}s
+              </Text>
+              <View
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  width: '100%',
+                  justifyContent: 'space-between',
+                }}>
+                <TouchableOpacity
+                  style={styles.startCss}
+                  onPress={() => startTimer(item.id)}>
+                  <LinearGradient
+                    colors={['#4B0082', '#8A2BE2', '#6A0DAD']}
+                    style={styles.linearGradient1}>
+                    <Text style={{...styles.buttonText1, color: '#FFFFFF'}}>
+                      Start
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.startCss}
+                  onPress={() => pauseTimer(item.id)}>
+                  <LinearGradient
+                    colors={['#00B4D8', '#007A8C', '#003B46']}
+                    style={styles.linearGradient1}>
+                    <Text style={{...styles.buttonText1, color: '#FFFFFF'}}>
+                      Pause
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.startCss}
+                  onPress={() => resetTimer(item.id)}>
+                  <LinearGradient
+                    colors={['#B89F91', '#A35D55', '#6E4B3B']}
+                    style={styles.linearGradient1}>
+                    <Text style={{...styles.buttonText1, color: '#FFFFFF'}}>
+                      Reset
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          renderSectionHeader={({section: {title}}) => (
+            <Text style={styles.categoryHeader}>{title}</Text>
+          )}
+        />
+        <Modal visible={showModal} transparent={true}>
+          <View style={styles.modalContainer}>
+            <FastImage
+              source={require('../assets/congs.gif')}
+              style={{width: 300, height: 300}}
+            />
+            <Text style={{color: 'white',margin:20,fontSize:18}}>
+              Congratulations! {completedTimer} Completed
+            </Text>
+            <TouchableOpacity
+                  style={{...styles.startCss,backgroundColor:"red",borderRadius:15}}
+                  onPress={() => setShowModal(false)}>
+                    <Text style={{...styles.buttonText1, color: '#FFFFFF'}}>
+                      Close
+                    </Text>
+                </TouchableOpacity>
           </View>
-        )}
-        renderSectionHeader={({ section: { title } }) => (
-          <Text style={styles.categoryHeader}>{title}</Text>
-        )}
-      />
-      <Modal visible={showModal} transparent={true}>
-        <View style={styles.modalContainer}>
-          <Text>Congratulations! {completedTimer} Completed</Text>
-          <Button title="Close" onPress={() => setShowModal(false)} />
-        </View>
-      </Modal>
+        </Modal>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  header: { fontSize: 24, fontWeight: 'bold', textAlign: 'center' },
-  input: { borderWidth: 1, marginVertical: 5, padding: 8 },
-  timerItem: { padding: 10, borderBottomWidth: 1 },
-  categoryHeader: { fontSize: 18, fontWeight: 'bold', backgroundColor: '#ddd', padding: 5 },
-  modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
+  container: {flex: 1, padding: 20, backgroundColor: '#FFF3E0'},
+  header: {fontSize: 24, fontWeight: 'bold', textAlign: 'center'},
+  input: {
+    borderWidth: 1,
+    marginVertical: 5,
+    padding: 8,
+    borderRadius: 10,
+    backgroundColor: 'white',
+  },
+  timerItem: {padding: 10},
+  categoryHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    backgroundColor: '#ddd',
+    padding: 5,
+    marginTop: 10,
+    borderRadius: 10,
+    textAlign: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.8)',
+  },
+  startCss: {
+    height: 40,
+    marginTop: 10,
+    marginBottom: 10,
+    width: '30%',
+  },
+  linearGradient1: {
+    height: '100%',
+    borderRadius: 15,
+    flex: 1,
+  },
+  buttonText1: {
+    fontSize: 18,
+    textAlign: 'center',
+    margin: 10,
+    backgroundColor: 'transparent',
+  },
+  AddTimer: {
+    height: 40,
+    marginTop: 10,
+    marginBottom: 10,
+    width: '100%',
+  },
 });
 
 export default TimerApp;
