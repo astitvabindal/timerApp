@@ -1,20 +1,5 @@
-// React Native Timer App with Full Feature Set
-// Updated to match all requirements
-
-import React, {useState, useEffect} from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Button,
-  SectionList,
-  Alert,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, SectionList, Alert, StyleSheet, Modal, ScrollView,TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 import FastImage from 'react-native-fast-image';
@@ -35,34 +20,38 @@ const TimerApp = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimers(prevTimers =>
-        prevTimers.map(timer => {
+      setTimers((prevTimers) =>
+        prevTimers.map((timer) => {
           if (timer.status === 'Running' && timer.remaining > 0) {
             const updatedRemaining = timer.remaining - 1;
             if (updatedRemaining === 0) {
               completeTimer(timer.id, timer.name);
-              return {...timer, remaining: 0, status: 'Completed'};
+              return { ...timer, remaining: 0, status: 'Completed' };
             }
-            return {...timer, remaining: updatedRemaining};
+            return { ...timer, remaining: updatedRemaining };
           }
           return timer;
-        }),
+        })
       );
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
-  const saveTimers = async timers => {
-    await AsyncStorage.setItem('timers', JSON.stringify(timers));
+  const saveTimers = async (timers) => {
+    const activeTimers = timers.filter(timer => timer.status !== 'Completed');
+    await AsyncStorage.setItem('timers', JSON.stringify(activeTimers));
   };
 
   const loadTimers = async () => {
     const storedTimers = await AsyncStorage.getItem('timers');
-    if (storedTimers) setTimers(JSON.parse(storedTimers));
+    if (storedTimers) {
+      const parsedTimers = JSON.parse(storedTimers);
+      setTimers(parsedTimers.filter(timer => timer.status !== 'Completed'));
+    }
   };
 
-  const saveHistory = async history => {
+  const saveHistory = async (history) => {
     await AsyncStorage.setItem('history', JSON.stringify(history));
   };
 
@@ -70,6 +59,8 @@ const TimerApp = () => {
     const storedHistory = await AsyncStorage.getItem('history');
     if (storedHistory) setHistory(JSON.parse(storedHistory));
   };
+
+
 
   const addTimer = () => {
     if (!newTimerName || !newTimerDuration || !newTimerCategory) {
@@ -92,63 +83,53 @@ const TimerApp = () => {
     setNewTimerCategory('');
   };
 
-  const startTimer = id => {
-    setTimers(prevTimers =>
-      prevTimers.map(timer =>
+  // Start a timer
+  const startTimer = (id) => {
+    setTimers((prevTimers) =>
+      prevTimers.map((timer) =>
         timer.id === id && timer.remaining > 0
-          ? {...timer, status: 'Running'}
-          : timer,
-      ),
+          ? { ...timer, status: 'Running' }
+          : timer
+      )
     );
   };
 
-  const pauseTimer = id => {
-    setTimers(prevTimers =>
-      prevTimers.map(timer =>
-        timer.id === id ? {...timer, status: 'Paused'} : timer,
-      ),
+  const pauseTimer = (id) => {
+    setTimers((prevTimers) =>
+      prevTimers.map((timer) =>
+        timer.id === id ? { ...timer, status: 'Paused' } : timer
+      )
     );
   };
 
-  const resetTimer = id => {
-    setTimers(prevTimers =>
-      prevTimers.map(timer =>
-        timer.id === id
-          ? {...timer, remaining: timer.duration, status: 'Paused'}
-          : timer,
-      ),
+  const resetTimer = (id) => {
+    setTimers((prevTimers) =>
+      prevTimers.map((timer) =>
+        timer.id === id ? { ...timer, remaining: timer.duration, status: 'Paused' } : timer
+      )
     );
   };
 
-  const completeTimer = async (id, name) => {
+  const completeTimer = (id, name) => {
     setCompletedTimer(name);
     setShowModal(true);
 
-    const newHistoryItem = {name, time: new Date().toLocaleString()};
-
-    // Load existing history from AsyncStorage
-    const storedHistory = await AsyncStorage.getItem('history');
-    const historyArray = storedHistory ? JSON.parse(storedHistory) : [];
-
-    // Append the new item
-    const updatedHistory = [...historyArray, newHistoryItem];
-
-    // Save the updated history
-    await AsyncStorage.setItem('history', JSON.stringify(updatedHistory));
-
-    // Update local state
+    const newHistoryItem = { name, time: new Date().toLocaleString() };
+    const updatedHistory = [...history, newHistoryItem];
     setHistory(updatedHistory);
+    saveHistory(updatedHistory);
 
-    // Remove the completed timer from the active list
-    setTimers(prevTimers => prevTimers.filter(timer => timer.id !== id));
+    setTimers(prevTimers => {
+      const activeTimers = prevTimers.filter(timer => timer.id !== id);
+      saveTimers(activeTimers);
+      return activeTimers;
+    });
   };
 
   return (
-    // <View style={[styles.container, darkMode ? styles.darkContainer : styles.lightContainer]}>
     <View style={[styles.container]}>
       <ScrollView>
         <Text style={styles.header}>Timer App</Text>
-        {/* <Switch value={darkMode} onValueChange={setDarkMode} /> */}
         <TextInput
           placeholder="Timer Name"
           value={newTimerName}
